@@ -431,7 +431,6 @@
     { id:"intent",     num:"07", label:"If AUBrokerFlow could significantly reduce the time you spend on repetitive document follow-up, would you be interested in trying it for 30 days?", options:["Yes — I'd like to explore the free pilot","Maybe — I'd like to understand how it works","Not at the moment"] }
   ];
   var STEP_GROUPS = [["leads","settle","hours"], ["bottleneck","tenure","goal","intent"], []];
-  var TIMES = ["9:00 am","10:00 am","11:30 am","1:00 pm","2:30 pm","4:00 pm"];
   var CONTACT_FIELDS = [
     { key:"name",     label:"Full Name",     placeholder:"Jordan Fielding",       type:"text" },
     { key:"business", label:"Business Name", placeholder:"Fielding Finance",      type:"text" },
@@ -442,8 +441,7 @@
   // ---------- State ----------
   var state = {
     page:"landing", step:0, answers:{},
-    contact:{ name:"", business:"", email:"", phone:"" },
-    day:null, dayLabel:null, time:null
+    contact:{ name:"", business:"", email:"", phone:"" }
   };
 
   var VIEWS = ["landing","apply","calendar","confirm","notfit"];
@@ -459,7 +457,6 @@
     window.scrollTo(0,0);
     updateSticky();
     if(page === "apply") renderQuiz();
-    if(page === "calendar") renderCalendar();
     if(page === "confirm") renderConfirm();
   }
 
@@ -569,7 +566,7 @@
   $("continue-btn").addEventListener("click", function(){
     if(!stepReady()) return;
     if(state.step === 2){
-      submitApplication();                       // hand lead to CRM/webhook
+      submitApplication();                       // hand lead to Google Sheet
       go(isQualified() ? "calendar" : "notfit"); // branch
     } else {
       state.step += 1;
@@ -583,31 +580,50 @@
     window.scrollTo(0,0);
   });
 
-  // ---------- Lead submission hook ----------
+  // ---------- Lead capture (Google Sheet via Apps Script) ----------
+  // Paste your Apps Script Web App URL (the one ending in /exec) between the quotes below.
+  // Setup steps + the script to deploy are in google-sheet-setup.md.
+  var LEAD_ENDPOINT = "https://script.google.com/macros/s/AKfycbwpoKfFTGbYgrbmsE_R3jYz4xGpsDgHH41GPRzKiP17TWXsO4qUfs49ZIeZP7X9kLOQFg/exec";
+
+  function postLead(payload){
+    if(!LEAD_ENDPOINT) return;
+    try{
+      fetch(LEAD_ENDPOINT, {
+        method:"POST",
+        mode:"no-cors",
+        headers:{ "Content-Type":"text/plain;charset=utf-8" },
+        body: JSON.stringify(payload)
+      });
+    }catch(e){ console.warn("[AUBrokerFlow] lead post failed", e); }
+  }
+
   function submitApplication(){
     var payload = {
+      type: "application",
       contact: state.contact,
       answers: state.answers,
       qualified: isQualified(),
       submittedAt: new Date().toISOString()
     };
-    // TODO: wire to your CRM / webhook / email here, e.g.:
-    // fetch("https://your-endpoint.example/leads", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify(payload) });
+    postLead(payload);
     try { window.localStorage.setItem("aubf_last_application", JSON.stringify(payload)); } catch(e){}
     console.log("[AUBrokerFlow] application submitted", payload);
   }
   function submitBooking(){
-    var payload = { contact: state.contact, source:"google-calendar-embed", durationMin:30, bookedAt:new Date().toISOString() };
-    // TODO: wire to your scheduling provider / CRM here.
+    var payload = {
+      type: "booking",
+      contact: state.contact,
+      durationMin: 30,
+      bookedAt: new Date().toISOString()
+    };
+    postLead(payload);
     try { window.localStorage.setItem("aubf_last_booking", JSON.stringify(payload)); } catch(e){}
     console.log("[AUBrokerFlow] booking confirmed", payload);
   }
 
-  // ---------- Calendar (Google Calendar embed) ----------
-  // Booking now happens inside the embedded Google Calendar. The "Continue" button
-  // records the intent and moves the visitor to the confirmation screen.
-  function renderCalendar(){ /* embed is static HTML; nothing to render */ }
-
+  // ---------- Calendar (Google Appointment Schedule embed) ----------
+  // Booking happens inside the embedded Google Appointment Schedule. The "Continue"
+  // button records the intent and moves the visitor to the confirmation screen.
   $("book-btn").addEventListener("click", function(){
     submitBooking();
     go("confirm");

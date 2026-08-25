@@ -1,0 +1,626 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>AUBrokerFlow — Stop Chasing Borrower Documents</title>
+<meta name="description" content="AUBrokerFlow helps Australian mortgage brokers automate borrower follow-ups, document collection, reminders, verification and organisation — reducing repetitive admin without adding another full-time admin resource." />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="anonymous" />
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet" />
+<style>
+  :root{
+    --bg:#FCFCFB; --bg-alt:#F5F7F6; --ink:#0B1E2D; --body:#4E6169;
+    --muted:#8A979C; --muted2:#6B7C82; --line:#E4E8E7; --line-input:#D6DCDB;
+    --accent:#0A7F73; --accent-hover:#08655C; --accent-light:#0FA192; --accent-light-hover:#13B7A6;
+    --on-light:#04231F; --panel:#0B1E2D; --panel-line:#26414F; --panel-muted:#A9BAC2; --panel-muted2:#7C919B;
+    --ok-bg:#F1F8F6; --ok-line:#C5E0DA; --ok-ink:#0A6F65;
+    --mono:'IBM Plex Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{margin:0;background:var(--bg);color:var(--ink);font-family:Archivo,Helvetica,Arial,sans-serif;-webkit-font-smoothing:antialiased;text-wrap:pretty;}
+  a{color:var(--accent);text-decoration:none}
+  a:hover{color:var(--ink)}
+  input,button,select,textarea{font-family:inherit}
+  h1,h2,h3,p{margin:0}
+  .mono{font-family:var(--mono)}
+  .hidden{display:none !important}
+  @keyframes abfPulse{0%,100%{opacity:1}50%{opacity:.35}}
+
+  /* buttons */
+  .btn{border:0;cursor:pointer;font-weight:600;letter-spacing:-0.01em;border-radius:10px;transition:background 140ms ease,color 140ms ease,border-color 140ms ease;display:inline-flex;align-items:center;justify-content:center;text-align:center}
+  .btn-primary{background:var(--accent);color:#fff}
+  .btn-primary:hover{background:var(--accent-hover);color:#fff}
+  .btn-light{background:var(--accent-light);color:var(--on-light);font-weight:700}
+  .btn-light:hover{background:var(--accent-light-hover)}
+  .btn-ghost{background:transparent;border:1px solid var(--line-input);color:var(--body);font-weight:600}
+  .btn-ghost:hover{border-color:var(--ink);color:var(--ink)}
+  .btn[disabled]{cursor:not-allowed;background:#C9D3D1;color:#fff}
+
+  .wrap{max-width:1200px;margin:0 auto;padding-left:24px;padding-right:24px}
+  .eyebrow{font-family:var(--mono);letter-spacing:0.14em;color:var(--accent);text-transform:uppercase}
+
+  /* header */
+  header.site{position:sticky;top:0;z-index:40;background:rgba(252,252,251,0.92);backdrop-filter:blur(8px);border-bottom:1px solid var(--line)}
+  .logo{display:flex;align-items:center;gap:10px;cursor:pointer}
+  .logo .mark{width:26px;height:26px;border-radius:6px;background:var(--panel);display:grid;place-items:center;color:#fff;font-size:13px;font-weight:700;letter-spacing:-0.02em}
+  .logo .word{font-size:17px;font-weight:700;letter-spacing:-0.02em;color:var(--ink)}
+
+  h1.hero{font-size:clamp(34px,5vw,60px);line-height:1.03;letter-spacing:-0.03em;font-weight:800;color:var(--ink)}
+  h2.sec{font-size:clamp(28px,3.4vw,42px);line-height:1.08;letter-spacing:-0.025em;font-weight:800}
+
+  .grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:clamp(32px,5vw,64px)}
+  .card{background:#fff;border:1px solid var(--line);border-radius:14px}
+
+  .step-row{display:flex;align-items:center;gap:14px;padding:13px 15px;border:1px solid var(--line);border-radius:10px;background:var(--bg)}
+  .step-conn{width:1px;height:16px;background:var(--line-input);margin-left:33px}
+  .step-num{font-family:var(--mono);font-size:11px;color:var(--muted);width:18px}
+
+  /* answer pills */
+  .pill{cursor:pointer;font-size:15.5px;font-weight:600;letter-spacing:-0.01em;padding:13px 18px;border-radius:9px;min-height:48px;border:1px solid var(--line-input);background:#fff;color:var(--ink);transition:background 120ms ease,border-color 120ms ease}
+  .pill.sel{border-color:var(--accent);background:var(--accent);color:#fff;box-shadow:0 10px 20px -14px rgba(10,127,115,.8)}
+
+  input.field{font-size:16px;padding:14px 15px;border:1px solid var(--line-input);border-radius:9px;background:#fff;color:var(--ink);min-height:48px;width:100%}
+  input.field:focus{outline:none;border-color:var(--accent)}
+
+  .sticky-cta{position:fixed;bottom:18px;right:18px;left:18px;z-index:60;display:flex;justify-content:flex-end;pointer-events:none}
+  @media (max-width:600px){ .sticky-cta{justify-content:stretch} .sticky-cta .btn{flex:1} }
+
+  /* ---------- Mobile-first refinements ---------- */
+  .lbl-short{display:none}
+  @media (max-width:768px){
+    .wrap{padding-left:18px;padding-right:18px}
+    /* stack the "how it works" grid — 2 columns is too tight on phones */
+    .hiw-grid{grid-template-columns:1fr !important}
+    /* full-width, thumb-friendly primary CTAs */
+    .btn.cta{width:100%}
+    /* header: swap the long label for a short one */
+    .lbl-full{display:none}
+    .lbl-short{display:inline}
+    /* slightly larger hero on small screens for punch */
+    h1.hero{font-size:clamp(30px,8vw,44px)}
+    /* give the booking embed room to scroll internally */
+    .book-embed iframe{height:660px !important}
+    /* quiz answer pills go full-width so they're easy to tap */
+    #quiz-body .pill{flex:1 1 100%}
+  }
+  @media (max-width:400px){
+    .wrap{padding-left:14px;padding-right:14px}
+  }
+</style>
+</head>
+<body>
+
+<!-- ============ HEADER ============ -->
+<header class="site">
+  <div class="wrap" style="padding-top:14px;padding-bottom:14px;display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;">
+    <div class="logo" data-nav="landing">
+      <div class="mark">A</div><span class="word">AUBrokerFlow</span>
+    </div>
+    <button class="btn btn-primary" data-nav="apply" style="font-size:14px;padding:12px 18px;border-radius:8px;min-height:44px;"><span class="lbl-full">Apply For Your 30-Day Free Pilot</span><span class="lbl-short">Apply Now</span></button>
+  </div>
+</header>
+
+<!-- ============ LANDING ============ -->
+<main id="view-landing">
+
+  <!-- Hero -->
+  <section class="wrap" style="padding:clamp(40px,7vw,96px) 24px clamp(32px,5vw,72px);">
+    <div class="grid2" style="align-items:center;">
+      <div>
+        <div class="eyebrow" style="font-size:12px;margin-bottom:20px;">For Australian Mortgage Brokers</div>
+        <h1 class="hero" style="margin-bottom:20px;">Stop Chasing Borrower Documents. Spend More Time Selling &amp; Settling Loans.</h1>
+        <p style="margin-bottom:28px;font-size:clamp(16px,1.4vw,19px);line-height:1.55;color:var(--body);max-width:56ch;">AUBrokerFlow helps Australian mortgage brokers automate borrower follow-ups, document collection, reminders, verification and organisation — reducing repetitive admin without adding another full-time admin resource.</p>
+        <div style="display:flex;flex-wrap:wrap;align-items:center;gap:16px;">
+          <button class="btn btn-primary cta" data-nav="apply" style="font-size:17px;padding:17px 28px;min-height:52px;">Apply For Your 30-Day Free Pilot</button>
+          <span class="mono" style="font-size:12.5px;color:var(--muted2);">30-day pilot • No commitment to continue</span>
+        </div>
+      </div>
+
+      <div class="card" style="padding:clamp(20px,2.4vw,30px);box-shadow:0 24px 48px -32px rgba(11,30,45,.28);">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:22px;">
+          <span class="mono" style="font-size:11.5px;letter-spacing:.12em;color:var(--muted);">DOCUMENT WORKFLOW</span>
+          <span class="mono" style="display:flex;align-items:center;gap:7px;font-size:11.5px;color:var(--accent);"><span style="width:7px;height:7px;border-radius:50%;background:var(--accent);animation:abfPulse 2.4s ease-in-out infinite;"></span>RUNNING</span>
+        </div>
+        <div style="display:flex;flex-direction:column;">
+          <div class="step-row"><span class="step-num">01</span><span style="font-size:14.5px;font-weight:600;letter-spacing:-0.01em;">New lead</span></div>
+          <div class="step-conn"></div>
+          <div class="step-row"><span class="step-num">02</span><span style="font-size:14.5px;font-weight:600;letter-spacing:-0.01em;">Document request</span></div>
+          <div class="step-conn"></div>
+          <div class="step-row" style="border-color:var(--accent);background:var(--ok-bg);">
+            <span class="step-num" style="color:var(--accent);">03</span>
+            <span style="font-size:14.5px;font-weight:600;letter-spacing:-0.01em;color:var(--ink);">Automated follow-up</span>
+            <span class="mono" style="margin-left:auto;font-size:10.5px;letter-spacing:.08em;color:var(--accent);">AUBROKERFLOW</span>
+          </div>
+          <div class="step-conn"></div>
+          <div class="step-row"><span class="step-num">04</span><span style="font-size:14.5px;font-weight:600;letter-spacing:-0.01em;">Document collection</span></div>
+          <div class="step-conn"></div>
+          <div class="step-row"><span class="step-num">05</span><span style="font-size:14.5px;font-weight:600;letter-spacing:-0.01em;">Document check</span></div>
+          <div class="step-conn"></div>
+          <div class="step-row"><span class="step-num">06</span><span style="font-size:14.5px;font-weight:600;letter-spacing:-0.01em;">Missing document alert</span></div>
+          <div class="step-conn"></div>
+          <div class="step-row" style="border-color:var(--panel);background:var(--panel);padding:15px;">
+            <span class="step-num" style="color:var(--panel-muted2);">07</span>
+            <span style="font-size:14.5px;font-weight:700;letter-spacing:-0.01em;color:#fff;">Organised application</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Pain -->
+  <section style="border-top:1px solid var(--line);background:var(--bg-alt);">
+    <div class="wrap" style="padding:clamp(48px,6vw,88px) 24px;">
+      <div class="grid2">
+        <div>
+          <h2 class="sec" style="margin-bottom:26px;max-width:20ch;">You Shouldn't Have To Chase Every Document Yourself.</h2>
+          <div style="border-left:2px solid var(--line-input);padding-left:22px;display:flex;flex-direction:column;gap:14px;font-size:16.5px;line-height:1.5;color:var(--body);">
+            <p>A new lead comes in.</p>
+            <p>You send the document checklist.</p>
+            <p>Then you wait.</p>
+            <p>The borrower sends three documents instead of five.</p>
+            <p>You follow up.</p>
+            <p>They promise to send the rest tomorrow.</p>
+            <p>You follow up again.</p>
+            <p>Then you check what they've sent, identify what's missing, ask again and try to keep everything organised.</p>
+            <p style="font-weight:600;color:var(--ink);">And the cycle repeats with every application.</p>
+          </div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:12px;">
+          <div class="mono" style="font-size:11.5px;letter-spacing:.12em;color:var(--muted);margin-bottom:4px;">ONE APPLICATION, YOUR WEEK</div>
+          <div class="card" style="display:flex;align-items:center;justify-content:space-between;gap:12px;border-radius:10px;padding:14px 16px;"><span style="font-size:14.5px;font-weight:600;">Checklist sent</span><span class="mono" style="font-size:11.5px;color:var(--muted);">MON</span></div>
+          <div class="card" style="display:flex;align-items:center;justify-content:space-between;gap:12px;border-radius:10px;padding:14px 16px;"><span style="font-size:14.5px;font-weight:600;color:var(--body);">3 of 5 documents received</span><span class="mono" style="font-size:11.5px;color:var(--muted);">TUE</span></div>
+          <div class="card" style="display:flex;align-items:center;justify-content:space-between;gap:12px;border-radius:10px;padding:14px 16px;"><span style="font-size:14.5px;font-weight:600;color:var(--body);">Follow-up #1 — you</span><span class="mono" style="font-size:11.5px;color:var(--muted);">WED</span></div>
+          <div class="card" style="display:flex;align-items:center;justify-content:space-between;gap:12px;border-radius:10px;padding:14px 16px;"><span style="font-size:14.5px;font-weight:600;color:var(--body);">Follow-up #2 — you</span><span class="mono" style="font-size:11.5px;color:var(--muted);">THU</span></div>
+          <div class="card" style="display:flex;align-items:center;justify-content:space-between;gap:12px;border-radius:10px;padding:14px 16px;"><span style="font-size:14.5px;font-weight:600;color:var(--body);">Check, chase, re-organise — you</span><span class="mono" style="font-size:11.5px;color:var(--muted);">FRI</span></div>
+          <div style="display:flex;align-items:center;justify-content:center;gap:10px;border:1px dashed #C7D0CE;border-radius:10px;padding:14px 16px;" class="mono"><span style="font-size:11.5px;letter-spacing:.1em;color:var(--muted);">REPEAT — NEXT APPLICATION</span></div>
+        </div>
+      </div>
+      <p style="margin-top:clamp(36px,4vw,56px);font-size:clamp(19px,2vw,24px);line-height:1.4;font-weight:600;letter-spacing:-0.02em;max-width:40ch;">The problem isn't that you're not working hard enough. You're spending valuable broker time on work that doesn't require a broker.</p>
+    </div>
+  </section>
+
+  <!-- Business outcome -->
+  <section style="border-top:1px solid var(--line);">
+    <div class="wrap" style="padding:clamp(48px,6vw,88px) 24px;">
+      <h2 class="sec" style="margin-bottom:clamp(28px,3.5vw,48px);max-width:24ch;">What Would You Do With The Hours You Get Back?</h2>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:20px;">
+        <div class="card" style="padding:28px;"><div class="eyebrow" style="font-size:12px;letter-spacing:.12em;margin-bottom:14px;">SELL MORE</div><p style="font-size:16.5px;line-height:1.5;color:var(--body);">Spend more time speaking with prospects and converting opportunities.</p></div>
+        <div class="card" style="padding:28px;"><div class="eyebrow" style="font-size:12px;letter-spacing:.12em;margin-bottom:14px;">SERVE CLIENTS</div><p style="font-size:16.5px;line-height:1.5;color:var(--body);">Focus on borrowers, loan strategy and relationships instead of repetitive follow-ups.</p></div>
+        <div class="card" style="padding:28px;"><div class="eyebrow" style="font-size:12px;letter-spacing:.12em;margin-bottom:14px;">SETTLE MORE</div><p style="font-size:16.5px;line-height:1.5;color:var(--body);">Keep applications moving by reducing delays caused by missing documentation.</p></div>
+      </div>
+      <div style="margin-top:clamp(28px,3vw,44px);display:flex;flex-wrap:wrap;align-items:center;gap:24px;justify-content:space-between;">
+        <p style="font-size:17.5px;line-height:1.5;font-weight:600;letter-spacing:-0.015em;max-width:48ch;">AUBrokerFlow is designed to take the repetitive document-chasing workload off your plate.</p>
+        <a href="#abf-demo" style="font-size:16px;font-weight:600;color:var(--accent);border-bottom:1px solid #B9D6D0;padding-bottom:3px;">See How It Works →</a>
+      </div>
+    </div>
+  </section>
+
+  <!-- VSL / Demo -->
+  <section id="abf-demo" style="background:var(--panel);color:#fff;">
+    <div style="max-width:1000px;margin:0 auto;padding:clamp(48px,6vw,88px) 24px;text-align:center;">
+      <h2 class="sec" style="margin:0 auto 18px;font-size:clamp(27px,3.2vw,40px);max-width:26ch;">See How AUBrokerFlow Takes Document Chasing Off Your Plate</h2>
+      <p style="margin:0 auto clamp(28px,3vw,40px);font-size:17px;line-height:1.55;color:var(--panel-muted);max-width:62ch;">See how AUBrokerFlow handles borrower messaging, follow-ups, reminders and document collection so your team can spend less time chasing paperwork.</p>
+      <!-- Replace this placeholder with the real VSL embed (YouTube/Vimeo/etc.) when available. -->
+      <div style="aspect-ratio:16/9;border-radius:14px;border:1px solid var(--panel-line);background-color:#0F273A;background-image:repeating-linear-gradient(135deg,rgba(255,255,255,.045) 0 10px,transparent 10px 20px);display:grid;place-items:center;">
+        <span class="mono" style="font-size:clamp(12px,1.4vw,15px);letter-spacing:.1em;color:#8FA6B0;">[ VSL / AI DEMO VIDEO ]</span>
+      </div>
+      <p style="margin:26px auto 0;font-size:16.5px;line-height:1.55;color:var(--panel-muted);max-width:58ch;">The goal isn't to replace your relationship with the borrower. It's to remove the repetitive work surrounding it.</p>
+      <button class="btn btn-light cta" data-nav="apply" style="margin-top:30px;font-size:17px;padding:17px 28px;min-height:52px;">Apply For Your 30-Day Free Pilot</button>
+    </div>
+  </section>
+
+  <!-- How it works -->
+  <section style="border-top:1px solid var(--line);">
+    <div class="wrap" style="padding:clamp(48px,6vw,88px) 24px;">
+      <h2 class="sec" style="margin-bottom:clamp(28px,3.5vw,48px);max-width:30ch;">From New Lead To Organised Documents — Without The Constant Chasing.</h2>
+      <div class="hiw-grid" style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:1px;background:var(--line);border:1px solid var(--line);border-radius:14px;overflow:hidden;">
+        <div style="background:#fff;padding:28px 24px;"><div class="eyebrow" style="font-size:12px;letter-spacing:.1em;margin-bottom:16px;">01 — REQUEST</div><p style="font-size:16px;line-height:1.5;color:var(--body);">The borrower receives the required document request.</p></div>
+        <div style="background:#fff;padding:28px 24px;"><div class="eyebrow" style="font-size:12px;letter-spacing:.1em;margin-bottom:16px;">02 — FOLLOW UP</div><p style="font-size:16px;line-height:1.5;color:var(--body);">AUBrokerFlow follows up when documents haven't been submitted.</p></div>
+        <div style="background:#fff;padding:28px 24px;"><div class="eyebrow" style="font-size:12px;letter-spacing:.1em;margin-bottom:16px;">03 — CHECK</div><p style="font-size:16px;line-height:1.5;color:var(--body);">Submitted documents can be checked against the required information.</p></div>
+        <div style="background:#fff;padding:28px 24px;"><div class="eyebrow" style="font-size:12px;letter-spacing:.1em;margin-bottom:16px;">04 — ORGANISE</div><p style="font-size:16px;line-height:1.5;color:var(--body);">The collected documents are brought together into a more organised application workflow.</p></div>
+      </div>
+      <p style="margin-top:clamp(28px,3vw,40px);font-size:17.5px;line-height:1.5;font-weight:600;letter-spacing:-0.015em;">You stay in control. AUBrokerFlow handles the repetitive follow-up work.</p>
+    </div>
+  </section>
+
+  <!-- Who it's for -->
+  <section style="border-top:1px solid var(--line);background:var(--bg-alt);">
+    <div class="wrap" style="padding:clamp(48px,6vw,88px) 24px;">
+      <div class="grid2" style="align-items:start;">
+        <div>
+          <h2 class="sec" style="margin-bottom:20px;max-width:24ch;">Built For Mortgage Brokers Who Are Busy Enough To Need It.</h2>
+          <p style="margin-bottom:28px;font-size:17px;line-height:1.55;color:var(--body);">AUBrokerFlow is designed for brokers who:</p>
+          <p style="margin-bottom:14px;font-size:17.5px;font-weight:600;letter-spacing:-0.015em;">Think This Sounds Like Your Brokerage?</p>
+          <button class="btn btn-primary cta" data-nav="apply" style="font-size:16.5px;padding:16px 26px;min-height:52px;">Apply For The 30-Day Free Pilot</button>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:1px;background:var(--line);border:1px solid var(--line);border-radius:14px;overflow:hidden;">
+          <div style="background:#fff;padding:20px 22px;display:flex;gap:14px;align-items:baseline;"><span style="color:var(--accent);font-weight:700;">✓</span><span style="font-size:16.5px;line-height:1.45;">Receive a consistent flow of mortgage leads</span></div>
+          <div style="background:#fff;padding:20px 22px;display:flex;gap:14px;align-items:baseline;"><span style="color:var(--accent);font-weight:700;">✓</span><span style="font-size:16.5px;line-height:1.45;">Are settling multiple loans each month</span></div>
+          <div style="background:#fff;padding:20px 22px;display:flex;gap:14px;align-items:baseline;"><span style="color:var(--accent);font-weight:700;">✓</span><span style="font-size:16.5px;line-height:1.45;">Spend hours chasing borrower documentation</span></div>
+          <div style="background:#fff;padding:20px 22px;display:flex;gap:14px;align-items:baseline;"><span style="color:var(--accent);font-weight:700;">✓</span><span style="font-size:16.5px;line-height:1.45;">Want to reduce repetitive administration</span></div>
+          <div style="background:#fff;padding:20px 22px;display:flex;gap:14px;align-items:baseline;"><span style="color:var(--accent);font-weight:700;">✓</span><span style="font-size:16.5px;line-height:1.45;">Want more time for sales and client conversations</span></div>
+          <div style="background:#fff;padding:20px 22px;display:flex;gap:14px;align-items:baseline;"><span style="color:var(--accent);font-weight:700;">✓</span><span style="font-size:16.5px;line-height:1.45;">Want to grow without immediately adding another admin resource</span></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Founder -->
+  <section style="border-top:1px solid var(--line);">
+    <div style="max-width:1100px;margin:0 auto;padding:clamp(48px,6vw,88px) 24px;">
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:clamp(32px,4vw,56px);align-items:center;">
+        <div style="aspect-ratio:4/5;border-radius:14px;border:1px solid var(--line);overflow:hidden;">
+          <img src="assets/Bhargav.jpeg" alt="Bhargav Gavini, founder of AUBrokerFlow" style="width:100%;height:100%;object-fit:cover;display:block;" />
+        </div>
+        <div>
+          <h2 class="sec" style="margin-bottom:8px;font-size:clamp(27px,3.2vw,38px);">Hi, I'm Bhargav Gavini.</h2>
+          <div class="mono" style="font-size:12.5px;letter-spacing:.06em;color:var(--accent);margin-bottom:24px;">Mortgage Broker Growth &amp; AI Automation Consultant</div>
+          <p style="margin-bottom:18px;font-size:17px;line-height:1.6;color:var(--body);">I help mortgage brokers identify repetitive workflows that consume valuable time and replace them with practical automation.</p>
+          <p style="margin-bottom:18px;font-size:17px;line-height:1.6;color:var(--body);">AUBrokerFlow was built around a simple idea:</p>
+          <p style="font-size:18px;line-height:1.5;font-weight:600;letter-spacing:-0.015em;color:var(--ink);">Mortgage brokers should spend their valuable time on clients, sales and settlements — not repetitive administrative work.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Offer -->
+  <section style="border-top:1px solid var(--line);background:var(--bg-alt);">
+    <div style="max-width:1100px;margin:0 auto;padding:clamp(48px,6vw,88px) 24px;">
+      <h2 class="sec" style="margin-bottom:16px;font-size:clamp(28px,3.4vw,44px);">Try AUBrokerFlow Free For 30 Days.</h2>
+      <p style="margin-bottom:clamp(28px,3.5vw,44px);font-size:17.5px;line-height:1.55;color:var(--body);max-width:64ch;">We're offering selected mortgage brokers the opportunity to experience AUBrokerFlow with their own workflow before deciding whether they want to continue.</p>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:20px;align-items:start;">
+        <div class="card" style="padding:clamp(24px,3vw,34px);">
+          <div class="mono" style="font-size:12px;letter-spacing:.12em;color:var(--muted);margin-bottom:20px;">DURING YOUR PILOT:</div>
+          <div style="display:flex;flex-direction:column;gap:13px;">
+            <div style="display:flex;gap:13px;align-items:baseline;"><span style="color:var(--accent);font-weight:700;">✓</span><span style="font-size:16.5px;line-height:1.45;">AUBrokerFlow implementation</span></div>
+            <div style="display:flex;gap:13px;align-items:baseline;"><span style="color:var(--accent);font-weight:700;">✓</span><span style="font-size:16.5px;line-height:1.45;">Borrower follow-up automation</span></div>
+            <div style="display:flex;gap:13px;align-items:baseline;"><span style="color:var(--accent);font-weight:700;">✓</span><span style="font-size:16.5px;line-height:1.45;">Document collection workflow</span></div>
+            <div style="display:flex;gap:13px;align-items:baseline;"><span style="color:var(--accent);font-weight:700;">✓</span><span style="font-size:16.5px;line-height:1.45;">Automated reminders</span></div>
+            <div style="display:flex;gap:13px;align-items:baseline;"><span style="color:var(--accent);font-weight:700;">✓</span><span style="font-size:16.5px;line-height:1.45;">Document checking workflow</span></div>
+            <div style="display:flex;gap:13px;align-items:baseline;"><span style="color:var(--accent);font-weight:700;">✓</span><span style="font-size:16.5px;line-height:1.45;">Application organisation</span></div>
+            <div style="display:flex;gap:13px;align-items:baseline;"><span style="color:var(--accent);font-weight:700;">✓</span><span style="font-size:16.5px;line-height:1.45;">Support during the pilot</span></div>
+          </div>
+        </div>
+        <div style="background:var(--panel);color:#fff;border-radius:14px;padding:clamp(24px,3vw,34px);">
+          <div class="mono" style="font-size:12px;letter-spacing:.12em;color:var(--panel-muted2);margin-bottom:22px;">IF YOU DECIDE TO CONTINUE</div>
+          <div style="display:flex;align-items:baseline;gap:10px;margin-bottom:10px;"><span style="font-size:clamp(30px,3.6vw,42px);font-weight:800;letter-spacing:-0.03em;">US$1,500</span><span style="font-size:15px;color:var(--panel-muted);">implementation</span></div>
+          <div class="mono" style="font-size:15px;color:var(--panel-muted2);margin:6px 0 10px;">+</div>
+          <div style="display:flex;align-items:baseline;gap:10px;"><span style="font-size:clamp(30px,3.6vw,42px);font-weight:800;letter-spacing:-0.03em;">US$500</span><span style="font-size:15px;color:var(--panel-muted);">/month</span></div>
+          <p style="margin-top:26px;padding-top:22px;border-top:1px solid var(--panel-line);font-size:16px;line-height:1.5;color:var(--panel-muted);">No obligation to continue after the pilot.</p>
+          <button class="btn btn-light" data-nav="apply" style="margin-top:24px;width:100%;font-size:16.5px;padding:17px 24px;min-height:52px;">Apply For Your 30-Day Free Pilot</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Final CTA -->
+  <section style="border-top:1px solid var(--line);">
+    <div style="max-width:780px;margin:0 auto;padding:clamp(56px,7vw,104px) 24px;text-align:center;">
+      <h2 class="sec" style="margin-bottom:18px;font-size:clamp(30px,4vw,50px);line-height:1.05;letter-spacing:-0.03em;">How Much Time Could You Get Back?</h2>
+      <p style="margin:0 auto 32px;font-size:17.5px;line-height:1.55;color:var(--body);max-width:54ch;">Find out whether AUBrokerFlow can reduce the repetitive document-follow-up workload in your brokerage.</p>
+      <button class="btn btn-primary cta" data-nav="apply" style="font-size:17px;padding:18px 30px;min-height:54px;">Apply For Your 30-Day Free Pilot</button>
+      <p style="margin:24px auto 0;font-size:15.5px;line-height:1.55;color:var(--muted2);max-width:56ch;">Complete the short application. If your brokerage looks like a good fit, you'll be able to book a 30-minute strategy call with Bhargav.</p>
+    </div>
+  </section>
+
+</main>
+
+<!-- ============ APPLY (quiz) ============ -->
+<main id="view-apply" class="hidden" style="max-width:760px;margin:0 auto;padding:clamp(36px,5vw,72px) 24px clamp(60px,8vw,110px);">
+  <h1 style="margin-bottom:14px;font-size:clamp(28px,3.6vw,42px);line-height:1.08;letter-spacing:-0.028em;font-weight:800;">Let's See If AUBrokerFlow Is Right For Your Brokerage.</h1>
+  <p style="margin-bottom:32px;font-size:17px;line-height:1.55;color:var(--body);">Answer 7 quick questions about your brokerage. It should take less than a minute.</p>
+  <div style="display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:12px;">
+    <span id="step-label" class="mono" style="font-size:12px;letter-spacing:.1em;color:var(--muted2);">Step 1 of 3</span>
+  </div>
+  <div style="height:4px;border-radius:4px;background:var(--line);overflow:hidden;margin-bottom:36px;">
+    <div id="progress-bar" style="height:100%;border-radius:4px;background:var(--accent);width:33%;transition:width 220ms ease;"></div>
+  </div>
+  <div id="quiz-body" style="display:flex;flex-direction:column;gap:34px;"></div>
+  <div style="margin-top:40px;display:flex;flex-wrap:wrap;align-items:center;gap:16px;">
+    <button id="continue-btn" class="btn btn-primary" style="font-size:16.5px;padding:16px 28px;min-height:52px;" disabled>Continue →</button>
+    <button id="back-btn" class="btn btn-ghost hidden" style="font-size:15.5px;padding:15px 22px;min-height:48px;">← Back</button>
+  </div>
+  <p style="margin-top:20px;font-size:14.5px;color:var(--muted);">Your details are used only to assess pilot fit and arrange your strategy call.</p>
+</main>
+
+<!-- ============ CALENDAR ============ -->
+<main id="view-calendar" class="hidden" style="max-width:1080px;margin:0 auto;padding:clamp(36px,5vw,72px) 24px clamp(60px,8vw,110px);">
+  <div class="eyebrow" style="font-size:12px;letter-spacing:.12em;margin-bottom:18px;">APPLICATION RECEIVED</div>
+  <h1 style="margin-bottom:14px;font-size:clamp(30px,3.8vw,46px);line-height:1.06;letter-spacing:-0.03em;font-weight:800;">You're A Potential Fit — Let's Talk.</h1>
+  <p style="margin-bottom:clamp(32px,4vw,48px);font-size:17.5px;line-height:1.55;color:var(--body);max-width:60ch;">Book a 30-minute Mortgage Broker Automation Strategy Call with Bhargav.</p>
+  <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:24px;align-items:start;">
+    <div class="card" style="padding:clamp(22px,2.6vw,30px);box-shadow:0 24px 48px -36px rgba(11,30,45,.3);">
+      <div style="display:flex;align-items:baseline;justify-content:space-between;gap:12px;margin-bottom:18px;">
+        <span style="font-size:17px;font-weight:700;letter-spacing:-0.015em;">Pick a time that suits you</span>
+        <span class="mono" style="font-size:11.5px;color:var(--muted);">30 MIN</span>
+      </div>
+      <!-- Google Appointment Schedule booking page ("30 mins Free Strategy Call").
+           This is a BOOKABLE embed: visitors choose a slot and it books onto the calendar.
+           `?gv=true` renders Google's inline/embedded view. Short link: https://calendar.app.google/jHLrS2bEJX7szRin7 -->
+      <div class="book-embed" style="width:100%;overflow:hidden;border:1px solid var(--line);border-radius:12px;">
+        <iframe title="Book your 30-minute free strategy call"
+          src="https://calendar.google.com/calendar/appointments/schedules/AcZssZ345XHBN2czsoS8M2FZhO_LFFHUKPsDyMQPQ1Qs92Cm5QOSl4010w8T62-K4_dO4f1HpkMehRBW?gv=true"
+          style="border:0;display:block;width:100%;height:600px;" frameborder="0" loading="lazy"></iframe>
+      </div>
+      <p style="margin-top:12px;font-size:13.5px;line-height:1.5;color:var(--muted2);">Book a free slot above — Google will email you the confirmation and calendar invite. Then continue.</p>
+      <button id="book-btn" class="btn btn-primary" style="margin-top:16px;width:100%;font-size:16.5px;padding:17px 24px;min-height:52px;">I've Booked — Continue →</button>
+    </div>
+    <div style="background:var(--bg-alt);border:1px solid var(--line);border-radius:14px;padding:clamp(22px,2.6vw,30px);">
+      <h2 style="margin-bottom:22px;font-size:19px;font-weight:700;letter-spacing:-0.015em;">During the call we'll:</h2>
+      <div style="display:flex;flex-direction:column;gap:16px;">
+        <div style="display:flex;gap:14px;"><span class="mono" style="font-size:12px;color:var(--accent);padding-top:3px;">01</span><span style="font-size:16.5px;line-height:1.45;">Understand your current workflow</span></div>
+        <div style="display:flex;gap:14px;"><span class="mono" style="font-size:12px;color:var(--accent);padding-top:3px;">02</span><span style="font-size:16.5px;line-height:1.45;">Identify repetitive administrative tasks</span></div>
+        <div style="display:flex;gap:14px;"><span class="mono" style="font-size:12px;color:var(--accent);padding-top:3px;">03</span><span style="font-size:16.5px;line-height:1.45;">Estimate where automation could save time</span></div>
+        <div style="display:flex;gap:14px;"><span class="mono" style="font-size:12px;color:var(--accent);padding-top:3px;">04</span><span style="font-size:16.5px;line-height:1.45;">Show you how AUBrokerFlow works</span></div>
+        <div style="display:flex;gap:14px;"><span class="mono" style="font-size:12px;color:var(--accent);padding-top:3px;">05</span><span style="font-size:16.5px;line-height:1.45;">Determine whether the 30-day pilot is suitable</span></div>
+      </div>
+    </div>
+  </div>
+</main>
+
+<!-- ============ CONFIRM ============ -->
+<main id="view-confirm" class="hidden" style="max-width:900px;margin:0 auto;padding:clamp(36px,5vw,72px) 24px clamp(60px,8vw,110px);">
+  <h1 style="margin-bottom:14px;font-size:clamp(30px,3.8vw,48px);line-height:1.06;letter-spacing:-0.03em;font-weight:800;">You're Booked. 🎉</h1>
+  <p style="margin-bottom:10px;font-size:17.5px;line-height:1.55;color:var(--body);">Your 30-minute strategy call with Bhargav is scheduled.</p>
+  <div id="booking-summary" class="mono" style="display:inline-flex;align-items:center;gap:10px;margin-bottom:clamp(36px,4.5vw,56px);background:var(--ok-bg);border:1px solid var(--ok-line);border-radius:9px;padding:11px 16px;font-size:13px;color:var(--ok-ink);white-space:nowrap;overflow-x:auto;max-width:100%;"></div>
+  <div style="border-top:1px solid var(--line);padding-top:clamp(30px,3.5vw,44px);">
+    <div class="mono" style="font-size:12px;letter-spacing:.12em;color:var(--muted);margin-bottom:26px;">BEFORE THE CALL</div>
+    <div style="display:flex;flex-direction:column;gap:28px;">
+      <div>
+        <h2 style="margin-bottom:16px;font-size:clamp(19px,2vw,23px);font-weight:700;letter-spacing:-0.02em;">1. Watch the AUBrokerFlow demonstration</h2>
+        <div style="aspect-ratio:16/9;border-radius:14px;border:1px solid var(--line);background-color:var(--bg-alt);background-image:repeating-linear-gradient(135deg,rgba(11,30,45,.05) 0 10px,transparent 10px 20px);display:grid;place-items:center;">
+          <span class="mono" style="font-size:clamp(12px,1.4vw,15px);letter-spacing:.1em;color:var(--muted);">[ VSL / AI DEMO VIDEO ]</span>
+        </div>
+      </div>
+      <div>
+        <h2 style="margin-bottom:16px;font-size:clamp(19px,2vw,23px);font-weight:700;letter-spacing:-0.02em;">2. Think about your current document workflow</h2>
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:12px;">
+          <div class="card" style="border-radius:11px;padding:18px 20px;font-size:16px;line-height:1.45;">How documents are currently requested</div>
+          <div class="card" style="border-radius:11px;padding:18px 20px;font-size:16px;line-height:1.45;">How often you follow up</div>
+          <div class="card" style="border-radius:11px;padding:18px 20px;font-size:16px;line-height:1.45;">Where borrowers typically get stuck</div>
+          <div class="card" style="border-radius:11px;padding:18px 20px;font-size:16px;line-height:1.45;">How much time your team spends on it</div>
+        </div>
+      </div>
+      <div>
+        <h2 style="font-size:clamp(19px,2vw,23px);font-weight:700;letter-spacing:-0.02em;">3. Come prepared to show us the current process</h2>
+      </div>
+    </div>
+  </div>
+  <div style="margin-top:clamp(40px,5vw,64px);background:var(--panel);color:#fff;border-radius:14px;padding:clamp(26px,3.2vw,40px);">
+    <div class="mono" style="font-size:12px;letter-spacing:.12em;color:var(--panel-muted2);margin-bottom:18px;">WHAT WE'LL DO TOGETHER</div>
+    <p style="margin-bottom:20px;font-size:clamp(17px,1.8vw,20px);line-height:1.5;letter-spacing:-0.015em;">We'll look at your current workflow and determine whether AUBrokerFlow can realistically remove some of the repetitive work from your day.</p>
+    <p style="padding-top:20px;border-top:1px solid var(--panel-line);font-size:16.5px;line-height:1.5;color:var(--panel-muted);">This isn't a generic AI consultation. We'll focus specifically on the workflow inside your brokerage.</p>
+  </div>
+</main>
+
+<!-- ============ NOT FIT ============ -->
+<main id="view-notfit" class="hidden" style="max-width:640px;margin:0 auto;padding:clamp(56px,8vw,120px) 24px;">
+  <div class="mono" style="font-size:12px;letter-spacing:.12em;color:var(--muted);margin-bottom:18px;">APPLICATION RECEIVED</div>
+  <h1 style="margin-bottom:20px;font-size:clamp(27px,3.2vw,38px);line-height:1.1;letter-spacing:-0.028em;font-weight:800;">Thanks for applying.</h1>
+  <p style="margin-bottom:28px;font-size:17.5px;line-height:1.6;color:var(--body);">Based on the information provided, AUBrokerFlow may not be the right fit for your brokerage at this stage. We'll keep your details on file and may be in touch as the solution evolves.</p>
+  <button class="btn btn-ghost" data-nav="landing" style="font-size:15.5px;padding:15px 22px;min-height:48px;">← Back to AUBrokerFlow</button>
+</main>
+
+<!-- ============ FOOTER ============ -->
+<footer style="border-top:1px solid var(--line);background:var(--bg-alt);">
+  <div class="wrap" style="padding:34px 24px;display:flex;flex-wrap:wrap;gap:18px;align-items:center;justify-content:space-between;">
+    <span style="font-size:15px;font-weight:700;letter-spacing:-0.015em;">AUBrokerFlow</span>
+    <span style="font-size:13.5px;line-height:1.5;color:var(--muted);max-width:70ch;">AUBrokerFlow is an administrative workflow automation system for mortgage brokers. It does not provide financial advice, make lending decisions or replace the broker relationship.</span>
+  </div>
+</footer>
+
+<!-- ============ STICKY CTA ============ -->
+<div id="sticky-cta" class="sticky-cta hidden">
+  <button class="btn btn-primary" data-nav="apply" style="pointer-events:auto;font-size:16px;padding:16px 24px;border-radius:999px;min-height:52px;box-shadow:0 18px 34px -18px rgba(11,30,45,.5);">Apply For Your 30-Day Free Pilot</button>
+</div>
+
+<script>
+(function(){
+  "use strict";
+
+  // ---------- Data ----------
+  var QUESTIONS = [
+    { id:"leads",      num:"01", label:"How many mortgage leads do you receive each month?", options:["1–5","6–10","11–20","21–40","40+"] },
+    { id:"settle",     num:"02", label:"How many loans do you typically settle each month?", options:["0–1","2–5","6–10","10+"] },
+    { id:"hours",      num:"03", label:"How much time do you currently spend each week chasing borrower documents and follow-ups?", options:["Less than 2 hours","2–5 hours","5–10 hours","10+ hours"] },
+    { id:"bottleneck", num:"04", label:"What part of the process takes up the most of your time?", options:["Chasing borrowers for documents","Following up on missing documents","Checking/organising documents","Client communication","General administration","Something else"] },
+    { id:"tenure",     num:"05", label:"How long have you been operating as a mortgage broker?", options:["Less than 1 year","1–3 years","3–5 years","5–10 years","10+ years"] },
+    { id:"goal",       num:"06", label:"What would you most like to achieve by reducing your administrative workload?", options:["Spend more time with clients","Generate and convert more leads","Settle more loans","Grow without hiring additional admin staff","Simply get more time back"] },
+    { id:"intent",     num:"07", label:"If AUBrokerFlow could significantly reduce the time you spend on repetitive document follow-up, would you be interested in trying it for 30 days?", options:["Yes — I'd like to explore the free pilot","Maybe — I'd like to understand how it works","Not at the moment"] }
+  ];
+  var STEP_GROUPS = [["leads","settle","hours"], ["bottleneck","tenure","goal","intent"], []];
+  var TIMES = ["9:00 am","10:00 am","11:30 am","1:00 pm","2:30 pm","4:00 pm"];
+  var CONTACT_FIELDS = [
+    { key:"name",     label:"Full Name",     placeholder:"Jordan Fielding",       type:"text" },
+    { key:"business", label:"Business Name", placeholder:"Fielding Finance",      type:"text" },
+    { key:"email",    label:"Email",         placeholder:"you@brokerage.com.au",  type:"email" },
+    { key:"phone",    label:"Phone",         placeholder:"04XX XXX XXX",          type:"tel" }
+  ];
+
+  // ---------- State ----------
+  var state = {
+    page:"landing", step:0, answers:{},
+    contact:{ name:"", business:"", email:"", phone:"" },
+    day:null, dayLabel:null, time:null
+  };
+
+  var VIEWS = ["landing","apply","calendar","confirm","notfit"];
+  var $ = function(id){ return document.getElementById(id); };
+
+  // ---------- Navigation ----------
+  function go(page){
+    state.page = page;
+    VIEWS.forEach(function(v){
+      var el = $("view-"+v);
+      if(el) el.classList.toggle("hidden", v !== page);
+    });
+    window.scrollTo(0,0);
+    updateSticky();
+    if(page === "apply") renderQuiz();
+    if(page === "calendar") renderCalendar();
+    if(page === "confirm") renderConfirm();
+  }
+
+  // data-nav buttons
+  document.addEventListener("click", function(e){
+    var t = e.target.closest("[data-nav]");
+    if(t){ e.preventDefault(); go(t.getAttribute("data-nav")); }
+  });
+
+  // ---------- Sticky CTA ----------
+  function updateSticky(){
+    var show = state.page === "landing" && window.scrollY > (window.innerHeight * 0.85);
+    $("sticky-cta").classList.toggle("hidden", !show);
+  }
+  window.addEventListener("scroll", updateSticky, { passive:true });
+
+  // ---------- Qualification logic (verbatim from design spec) ----------
+  function isQualified(){
+    var a = state.answers;
+    if(a.intent === "Not at the moment") return false;
+    var lowLeads  = a.leads  === "1–5";
+    var lowSettle = a.settle === "0–1";
+    var lowHours  = a.hours  === "Less than 2 hours";
+    return !(lowLeads && lowSettle && lowHours);
+  }
+
+  // ---------- Quiz rendering ----------
+  function currentGroup(){ return STEP_GROUPS[state.step]; }
+  function showContact(){ return state.step === 2; }
+
+  function stepReady(){
+    var group = currentGroup();
+    var groupDone = group.every(function(id){ return !!state.answers[id]; });
+    if(!showContact()) return groupDone;
+    var contactDone = CONTACT_FIELDS.every(function(f){ return String(state.contact[f.key]).trim() !== ""; });
+    return groupDone && contactDone;
+  }
+
+  function renderQuiz(){
+    var body = $("quiz-body");
+    body.innerHTML = "";
+    var group = currentGroup();
+
+    QUESTIONS.filter(function(q){ return group.indexOf(q.id) > -1; }).forEach(function(q){
+      var block = document.createElement("div");
+
+      var head = document.createElement("div");
+      head.style.cssText = "display:flex;gap:12px;margin-bottom:16px;";
+      head.innerHTML = '<span class="mono" style="font-size:12px;color:var(--accent);padding-top:5px;">'+q.num+'</span>' +
+                       '<h2 style="margin:0;font-size:clamp(18px,1.8vw,21px);line-height:1.35;letter-spacing:-0.015em;font-weight:700;">'+q.label+'</h2>';
+      block.appendChild(head);
+
+      var opts = document.createElement("div");
+      opts.style.cssText = "display:flex;flex-wrap:wrap;gap:10px;";
+      q.options.forEach(function(label){
+        var b = document.createElement("button");
+        b.type = "button";
+        b.className = "pill" + (state.answers[q.id] === label ? " sel" : "");
+        b.textContent = label;
+        b.addEventListener("click", function(){
+          state.answers[q.id] = label;
+          renderQuiz();
+        });
+        opts.appendChild(b);
+      });
+      block.appendChild(opts);
+      body.appendChild(block);
+    });
+
+    // contact fields on final step
+    if(showContact()){
+      var grid = document.createElement("div");
+      grid.style.cssText = "display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:18px;";
+      CONTACT_FIELDS.forEach(function(f){
+        var lab = document.createElement("label");
+        lab.style.cssText = "display:flex;flex-direction:column;gap:8px;";
+        var span = document.createElement("span");
+        span.style.cssText = "font-size:14px;font-weight:600;color:var(--body);";
+        span.textContent = f.label;
+        var inp = document.createElement("input");
+        inp.className = "field";
+        inp.type = f.type;
+        inp.placeholder = f.placeholder;
+        inp.value = state.contact[f.key];
+        inp.addEventListener("input", function(e){
+          state.contact[f.key] = e.target.value;
+          syncControls();
+        });
+        lab.appendChild(span); lab.appendChild(inp);
+        grid.appendChild(lab);
+      });
+      body.appendChild(grid);
+    }
+
+    // progress + labels
+    $("step-label").textContent = "Step " + (state.step + 1) + " of 3";
+    $("progress-bar").style.width = Math.round(((state.step + 1) / 3) * 100) + "%";
+    $("continue-btn").textContent = (state.step === 2 ? "Submit Application →" : "Continue →");
+    $("back-btn").classList.toggle("hidden", state.step === 0);
+    syncControls();
+  }
+
+  function syncControls(){
+    $("continue-btn").disabled = !stepReady();
+  }
+
+  $("continue-btn").addEventListener("click", function(){
+    if(!stepReady()) return;
+    if(state.step === 2){
+      submitApplication();                       // hand lead to CRM/webhook
+      go(isQualified() ? "calendar" : "notfit"); // branch
+    } else {
+      state.step += 1;
+      renderQuiz();
+      window.scrollTo(0,0);
+    }
+  });
+  $("back-btn").addEventListener("click", function(){
+    state.step = Math.max(0, state.step - 1);
+    renderQuiz();
+    window.scrollTo(0,0);
+  });
+
+  // ---------- Lead submission hook ----------
+  function submitApplication(){
+    var payload = {
+      contact: state.contact,
+      answers: state.answers,
+      qualified: isQualified(),
+      submittedAt: new Date().toISOString()
+    };
+    // TODO: wire to your CRM / webhook / email here, e.g.:
+    // fetch("https://your-endpoint.example/leads", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify(payload) });
+    try { window.localStorage.setItem("aubf_last_application", JSON.stringify(payload)); } catch(e){}
+    console.log("[AUBrokerFlow] application submitted", payload);
+  }
+  function submitBooking(){
+    var payload = { contact: state.contact, source:"google-calendar-embed", durationMin:30, bookedAt:new Date().toISOString() };
+    // TODO: wire to your scheduling provider / CRM here.
+    try { window.localStorage.setItem("aubf_last_booking", JSON.stringify(payload)); } catch(e){}
+    console.log("[AUBrokerFlow] booking confirmed", payload);
+  }
+
+  // ---------- Calendar (Google Calendar embed) ----------
+  // Booking now happens inside the embedded Google Calendar. The "Continue" button
+  // records the intent and moves the visitor to the confirmation screen.
+  function renderCalendar(){ /* embed is static HTML; nothing to render */ }
+
+  $("book-btn").addEventListener("click", function(){
+    submitBooking();
+    go("confirm");
+  });
+
+  // ---------- Confirm ----------
+  function renderConfirm(){
+    $("booking-summary").textContent = "30-minute strategy call · details in your email";
+  }
+
+  // ---------- Init ----------
+  go("landing");
+})();
+</script>
+</body>
+</html>

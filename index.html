@@ -5,6 +5,24 @@
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>AUBrokerFlow — Stop Chasing Borrower Documents</title>
 <meta name="description" content="AUBrokerFlow helps Australian mortgage brokers automate borrower follow-ups, document collection, reminders, verification and organisation — reducing repetitive admin without adding another full-time admin resource." />
+<!-- Meta Pixel Code -->
+<script>
+!function(f,b,e,v,n,t,s)
+{if(f.fbq)return;n=f.fbq=function(){n.callMethod?
+n.callMethod.apply(n,arguments):n.queue.push(arguments)};
+if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';
+n.queue=[];t=b.createElement(e);t.async=!0;
+t.src=v;s=b.getElementsByTagName(e)[0];
+s.parentNode.insertBefore(t,s)}(window, document,'script',
+'https://connect.facebook.net/en_US/fbevents.js');
+fbq('init', '1370851091928795');
+fbq('track', 'PageView');
+</script>
+<noscript><img height="1" width="1" style="display:none"
+src="https://www.facebook.com/tr?id=1370851091928795&ev=PageView&noscript=1"
+/></noscript>
+<!-- End Meta Pixel Code -->
+
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="anonymous" />
 <link href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet" />
@@ -447,6 +465,18 @@
   var VIEWS = ["landing","apply","calendar","confirm","notfit"];
   var $ = function(id){ return document.getElementById(id); };
 
+  // ---------- Meta Pixel helpers (safe if pixel not loaded) ----------
+  function fbTrack(event, params){ if(window.fbq){ try{ fbq('track', event, params||{}); }catch(e){} } }
+  function fbTrackCustom(event, params){ if(window.fbq){ try{ fbq('trackCustom', event, params||{}); }catch(e){} } }
+
+  // Fire a retargeting-friendly event whenever a funnel stage is reached.
+  function fireStageEvent(page){
+    if(page === "apply")    fbTrackCustom('ApplicationStarted');
+    if(page === "calendar") fbTrackCustom('ReachedBooking');       // qualified lead reached the calendar
+    if(page === "confirm")  fbTrackCustom('BookingConfirmed');
+    if(page === "notfit")   fbTrackCustom('NotAFit');
+  }
+
   // ---------- Navigation ----------
   function go(page){
     state.page = page;
@@ -456,6 +486,7 @@
     });
     window.scrollTo(0,0);
     updateSticky();
+    fireStageEvent(page);
     if(page === "apply") renderQuiz();
     if(page === "confirm") renderConfirm();
   }
@@ -606,6 +637,7 @@
       submittedAt: new Date().toISOString()
     };
     postLead(payload);
+    fbTrack('Lead', { content_name: 'Pilot Application', qualified: isQualified() });
     try { window.localStorage.setItem("aubf_last_application", JSON.stringify(payload)); } catch(e){}
     console.log("[AUBrokerFlow] application submitted", payload);
   }
@@ -617,6 +649,7 @@
       bookedAt: new Date().toISOString()
     };
     postLead(payload);
+    fbTrack('Schedule', { content_name: '30-min Strategy Call' });
     try { window.localStorage.setItem("aubf_last_booking", JSON.stringify(payload)); } catch(e){}
     console.log("[AUBrokerFlow] booking confirmed", payload);
   }

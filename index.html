@@ -99,7 +99,10 @@ src="https://www.facebook.com/tr?id=1370851091928795&ev=PageView&noscript=1"
     /* slightly larger hero on small screens for punch */
     h1.hero{font-size:clamp(30px,8vw,44px)}
     /* give the booking embed room to scroll internally */
-    .book-embed iframe{height:660px !important}
+    .book-embed iframe{height:720px !important}
+    /* tighten the calendar/booking page on mobile so the Google widget gets more width */
+    #view-calendar{padding-left:12px !important;padding-right:12px !important}
+    .book-card{padding:12px !important}
     /* quiz answer pills go full-width so they're easy to tap */
     #quiz-body .pill{flex:1 1 100%}
   }
@@ -352,7 +355,7 @@ src="https://www.facebook.com/tr?id=1370851091928795&ev=PageView&noscript=1"
   <h1 style="margin-bottom:14px;font-size:clamp(30px,3.8vw,46px);line-height:1.06;letter-spacing:-0.03em;font-weight:800;">You're A Potential Fit — Let's Talk.</h1>
   <p style="margin-bottom:clamp(32px,4vw,48px);font-size:17.5px;line-height:1.55;color:var(--body);max-width:60ch;">Book a 30-minute Mortgage Broker Automation Strategy Call with Bhargav.</p>
   <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:24px;align-items:start;">
-    <div class="card" style="padding:clamp(22px,2.6vw,30px);box-shadow:0 24px 48px -36px rgba(11,30,45,.3);">
+    <div class="card book-card" style="padding:clamp(22px,2.6vw,30px);box-shadow:0 24px 48px -36px rgba(11,30,45,.3);">
       <div style="display:flex;align-items:baseline;justify-content:space-between;gap:12px;margin-bottom:18px;">
         <span style="font-size:17px;font-weight:700;letter-spacing:-0.015em;">Pick a time that suits you</span>
         <span class="mono" style="font-size:11.5px;color:var(--muted);">30 MIN</span>
